@@ -773,8 +773,15 @@ func resourceOrchestratedVirtualMachineScaleSetUpdate(d *pluginsdk.ResourceData,
 
 		osProfileRaw := d.Get("os_profile").([]interface{})
 		vmssOsProfile := compute.VirtualMachineScaleSetUpdateOSProfile{}
-		windowsConfig := compute.WindowsConfiguration{}
-		windowsConfig.PatchSettings = &compute.PatchSettings{}
+		var windowsConfig *compute.WindowsConfiguration
+		withWinCfg := func(set func()) {
+			if windowsConfig == nil {
+				windowsConfig = &compute.WindowsConfiguration{
+					PatchSettings: &compute.PatchSettings{},
+				}
+			}
+			set()
+		}
 		linuxConfig := compute.LinuxConfiguration{}
 
 		if len(osProfileRaw) > 0 {
@@ -810,28 +817,36 @@ func resourceOrchestratedVirtualMachineScaleSetUpdate(d *pluginsdk.ResourceData,
 				}
 
 				if d.HasChange("os_profile.0.windows_configuration.0.enable_automatic_updates") {
-					windowsConfig.EnableAutomaticUpdates = utils.Bool(winConfig["enable_automatic_updates"].(bool))
+					withWinCfg(func() {
+						windowsConfig.EnableAutomaticUpdates = utils.Bool(winConfig["enable_automatic_updates"].(bool))
+					})
 				}
 
 				if d.HasChange("os_profile.0.windows_configuration.0.provision_vm_agent") {
 					if isHotpatchEnabledImage && !provisionVMAgent {
 						return fmt.Errorf("when referencing a hotpatching enabled image the 'provision_vm_agent' field must always be set to 'true', got %q", strconv.FormatBool(provisionVMAgent))
 					}
-					windowsConfig.ProvisionVMAgent = utils.Bool(provisionVMAgent)
+					withWinCfg(func() {
+						windowsConfig.ProvisionVMAgent = utils.Bool(provisionVMAgent)
+					})
 				}
 
 				if d.HasChange("os_profile.0.windows_configuration.0.patch_assessment_mode") {
 					if !provisionVMAgent && (patchAssessmentMode == string(compute.WindowsPatchAssessmentModeAutomaticByPlatform)) {
 						return fmt.Errorf("when the 'patch_assessment_mode' field is set to %q the 'provision_vm_agent' must always be set to 'true'", compute.WindowsPatchAssessmentModeAutomaticByPlatform)
 					}
-					windowsConfig.PatchSettings.AssessmentMode = compute.WindowsPatchAssessmentMode(patchAssessmentMode)
+					withWinCfg(func() {
+						windowsConfig.PatchSettings.AssessmentMode = compute.WindowsPatchAssessmentMode(patchAssessmentMode)
+					})
 				}
 
 				if d.HasChange("os_profile.0.windows_configuration.0.patch_mode") {
 					if isHotpatchEnabledImage && (patchMode != string(compute.WindowsVMGuestPatchModeAutomaticByPlatform)) {
 						return fmt.Errorf("when referencing a hotpatching enabled image the 'patch_mode' field must always be set to %q, got %q", compute.WindowsVMGuestPatchModeAutomaticByPlatform, patchMode)
 					}
-					windowsConfig.PatchSettings.PatchMode = compute.WindowsVMGuestPatchMode(patchMode)
+					withWinCfg(func() {
+						windowsConfig.PatchSettings.PatchMode = compute.WindowsVMGuestPatchMode(patchMode)
+					})
 				}
 
 				// Disabling hotpatching is not supported in images that support hotpatching
@@ -842,7 +857,9 @@ func resourceOrchestratedVirtualMachineScaleSetUpdate(d *pluginsdk.ResourceData,
 					if isHotpatchEnabledImage && !hotpatchingEnabled {
 						return fmt.Errorf("when referencing a hotpatching enabled image the 'hotpatching_enabled' field must always be set to 'true', got %q", strconv.FormatBool(hotpatchingEnabled))
 					}
-					windowsConfig.PatchSettings.EnableHotpatching = utils.Bool(hotpatchingEnabled)
+					withWinCfg(func() {
+						windowsConfig.PatchSettings.EnableHotpatching = utils.Bool(hotpatchingEnabled)
+					})
 				}
 
 				if d.HasChange("os_profile.0.windows_configuration.0.secret") {
@@ -850,7 +867,9 @@ func resourceOrchestratedVirtualMachineScaleSetUpdate(d *pluginsdk.ResourceData,
 				}
 
 				if d.HasChange("os_profile.0.windows_configuration.0.timezone") {
-					windowsConfig.TimeZone = utils.String(winConfig["timezone"].(string))
+					withWinCfg(func() {
+						windowsConfig.TimeZone = utils.String(winConfig["timezone"].(string))
+					})
 				}
 
 				if d.HasChange("os_profile.0.windows_configuration.0.winrm_listener") {
@@ -858,7 +877,7 @@ func resourceOrchestratedVirtualMachineScaleSetUpdate(d *pluginsdk.ResourceData,
 					vmssOsProfile.WindowsConfiguration.WinRM = expandWinRMListener(winRmListenersRaw)
 				}
 
-				vmssOsProfile.WindowsConfiguration = &windowsConfig
+				vmssOsProfile.WindowsConfiguration = windowsConfig
 			}
 
 			if len(linConfigRaw) > 0 {
