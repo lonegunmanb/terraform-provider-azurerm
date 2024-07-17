@@ -46,17 +46,19 @@ func resourceFromRaw(input *schema.Resource) (*ResourceJSON, error) {
 
 func schemaFromRaw(input *schema.Schema) SchemaJSON {
 	return SchemaJSON{
-		Type:        input.Type.String(),
-		ConfigMode:  decodeConfigMode(input.ConfigMode),
-		Optional:    input.Optional,
-		Required:    input.Required,
-		Default:     input.Default,
-		Description: input.Description,
-		Computed:    input.Computed,
-		ForceNew:    input.ForceNew,
-		Elem:        decodeElem(input.Elem),
-		MaxItems:    input.MaxItems,
-		MinItems:    input.MinItems,
+		Type:         input.Type.String(),
+		ConfigMode:   decodeConfigMode(input.ConfigMode),
+		Optional:     input.Optional,
+		Required:     input.Required,
+		Default:      input.Default,
+		Description:  input.Description,
+		Deprecated:   input.Deprecated,
+		Computed:     input.Computed,
+		ConflictWith: input.ConflictsWith,
+		ForceNew:     input.ForceNew,
+		Elem:         decodeElem(input.Elem),
+		MaxItems:     input.MaxItems,
+		MinItems:     input.MinItems,
 	}
 }
 

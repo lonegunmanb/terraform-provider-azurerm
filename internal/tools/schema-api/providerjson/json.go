@@ -22,17 +22,19 @@ const (
 type ProviderJSON schema.Provider
 
 type SchemaJSON struct {
-	Type        string      `json:"type,omitempty"` // TODO - Needs to be interface{}
-	ConfigMode  string      `json:"configMode,omitempty"`
-	Optional    bool        `json:"optional,omitempty"`
-	Required    bool        `json:"required,omitempty"`
-	Default     interface{} `json:"default,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Computed    bool        `json:"computed,omitempty"`
-	ForceNew    bool        `json:"forceNew,omitempty"`
-	Elem        interface{} `json:"elem,omitempty"`
-	MaxItems    int         `json:"maxItems,omitempty"`
-	MinItems    int         `json:"minItems,omitempty"`
+	Type         string      `json:"type,omitempty"` // TODO - Needs to be interface{}
+	ConfigMode   string      `json:"configMode,omitempty"`
+	Optional     bool        `json:"optional,omitempty"`
+	Required     bool        `json:"required,omitempty"`
+	Default      interface{} `json:"default,omitempty"`
+	Description  string      `json:"description,omitempty"`
+	Deprecated   string      `json:"deprecated,omitempty"`
+	Computed     bool        `json:"computed,omitempty"`
+	ConflictWith []string    `json:"conflictWith,omitempty"`
+	ForceNew     bool        `json:"forceNew,omitempty"`
+	Elem         interface{} `json:"elem,omitempty"`
+	MaxItems     int         `json:"maxItems,omitempty"`
+	MinItems     int         `json:"minItems,omitempty"`
 }
 
 func (b *SchemaJSON) UnmarshalJSON(body []byte) error {
@@ -46,6 +48,7 @@ func (b *SchemaJSON) UnmarshalJSON(body []byte) error {
 	b.Optional, _ = m["optional"].(bool)
 	b.Required, _ = m["required"].(bool)
 	b.Description, _ = m["description"].(string)
+	b.Deprecated, _ = m["deprecated"].(string)
 	b.Computed, _ = m["computed"].(bool)
 	b.ForceNew, _ = m["forceNew"].(bool)
 	if max, ok := m["maxItems"].(float64); ok {
@@ -53,6 +56,15 @@ func (b *SchemaJSON) UnmarshalJSON(body []byte) error {
 	}
 	if min, ok := m["minItems"].(float64); ok {
 		b.MaxItems = int(min)
+	}
+
+	if conflict, ok := m["conflictWith"]; ok && conflict != nil {
+		switch v := conflict.(type) {
+		case []interface{}:
+			for _, item := range v {
+				b.ConflictWith = append(b.ConflictWith, item.(string))
+			}
+		}
 	}
 
 	if def, ok := m["default"]; ok && def != nil {
