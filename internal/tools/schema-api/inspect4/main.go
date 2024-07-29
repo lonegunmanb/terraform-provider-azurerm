@@ -164,7 +164,7 @@ func skipComputed(rt string, key string) bool {
 	return false
 }
 
-var deprecateReg = regexp.MustCompile("(in favour of|superseded by|been renamed to|please use)[^`]*`(.*)`")
+var deprecateReg = regexp.MustCompile("(in favour of|superseded by|been renamed to|please use)[^`]*`([^`]*)`")
 
 func (d *differ) diffResource(rt string, v3, v4 providerjson.ResourceJSON, parentPath string) {
 	diffs := d.diffs[rt]

@@ -195,7 +195,7 @@ func deleteProps(resourceType string, deleted []string, block *codeBlock) {
 
 func (d *differ) fixAllTestsByDir(dir string) {
 	allTestFiles := findAllTestFiles(dir)
-	writeBack := os.Getenv("WRITE_BACK") == "true"
+	writeBack := true // os.Getenv("WRITE_BACK") == "true"
 	for _, file := range allTestFiles {
 		d.fixByFilePath(file, writeBack)
 	}
