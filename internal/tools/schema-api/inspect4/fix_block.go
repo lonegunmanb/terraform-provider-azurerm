@@ -141,8 +141,10 @@ func patchRenamed(resourceType, updatedLine string, rename [2]string) (res strin
 func fixRenamed(resourceType string, renamed [][2]string, block *codeBlock) {
 	for _, rename := range renamed {
 		for idx, line := range block.fixedLines {
-			if strings.Contains(line, rename[0]+" =") {
-				updatedLine := strings.Replace(line, rename[0], rename[1], 1)
+			oldKeys := strings.Split(rename[0], ".")
+			oldKeyName := oldKeys[len(oldKeys)-1]
+			if strings.Contains(line, oldKeyName+" =") {
+				updatedLine := strings.Replace(line, oldKeyName, rename[1], 1)
 				block.fixedLines[idx] = patchRenamed(resourceType, updatedLine, rename)
 			}
 		}

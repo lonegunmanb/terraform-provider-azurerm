@@ -169,7 +169,7 @@ var deprecateReg = regexp.MustCompile("(in favour of|superseded by|been renamed 
 func (d *differ) diffResource(rt string, v3, v4 providerjson.ResourceJSON, parentPath string) {
 	diffs := d.diffs[rt]
 	for key, schemaV3 := range v3.Schema {
-		// deleted from v4
+		// deleted in v4
 		itemPath := appendPath(parentPath, key)
 		schemaV4, ok := v4.Schema[key]
 		if !ok {
@@ -177,7 +177,7 @@ func (d *differ) diffResource(rt string, v3, v4 providerjson.ResourceJSON, paren
 			if match := deprecateReg.FindStringSubmatch(schemaV3.Deprecated); len(match) > 2 {
 				// if moved to a new resource, it's not a rename. also some special props should not be treated as a rename
 				if key != "resource_group_name" && !strings.HasPrefix(match[2], "azurerm_") {
-					diffs.addRenamed(key, match[2])
+					diffs.addRenamed(itemPath, match[2])
 					continue
 				}
 			}
@@ -196,13 +196,17 @@ func (d *differ) diffResource(rt string, v3, v4 providerjson.ResourceJSON, paren
 			}
 		}
 
-		if eleV3, ok := schemaV3.Elem.(providerjson.ResourceJSON); ok {
-			eleV4, ok := schemaV4.Elem.(providerjson.ResourceJSON)
+		if schemaV3.Elem == nil {
+			continue
+		}
+
+		if eleV3, ok := schemaV3.Elem.(*providerjson.ResourceJSON); ok {
+			eleV4, ok := schemaV4.Elem.(*providerjson.ResourceJSON)
 			if !ok {
 				log.Printf("%s:%s v4 ele is not resource schema while v3 is", rt, itemPath)
 				continue
 			} else {
-				d.diffResource(rt, eleV3, eleV4, itemPath)
+				d.diffResource(rt, *eleV3, *eleV4, itemPath)
 			}
 		}
 	}
