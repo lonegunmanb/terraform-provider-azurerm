@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"path"
 	"regexp"
 	"strings"
 
@@ -37,35 +37,35 @@ func (d DiffContainer) addItem(rt string, path string) {
 type diffPaths []string
 
 type diffs struct {
-	resourceType        string
-	deletedInV4         diffPaths
-	removedComputedInv4 diffPaths
-	RenamedInV4         [][2]string // [from, to]
+	ResourceType        string      `json:"resource_type"`
+	DeletedInV4         diffPaths   `json:"deleted"`
+	RemovedComputedInv4 diffPaths   `json:"oc_removed"`
+	RenamedInV4         [][2]string `json:"reanmed"`
 }
 
 func (d *diffs) clone() *diffs {
 	item := &diffs{
-		resourceType:        d.resourceType,
-		deletedInV4:         make(diffPaths, len(d.deletedInV4)),
-		removedComputedInv4: make(diffPaths, len(d.removedComputedInv4)),
+		ResourceType:        d.ResourceType,
+		DeletedInV4:         make(diffPaths, len(d.DeletedInV4)),
+		RemovedComputedInv4: make(diffPaths, len(d.RemovedComputedInv4)),
 		RenamedInV4:         make([][2]string, len(d.RenamedInV4)),
 	}
-	copy(item.deletedInV4, d.deletedInV4)
-	copy(item.removedComputedInv4, d.removedComputedInv4)
+	copy(item.DeletedInV4, d.DeletedInV4)
+	copy(item.RemovedComputedInv4, d.RemovedComputedInv4)
 	copy(item.RenamedInV4, d.RenamedInV4)
 	return item
 }
 
 func (d *diffs) addDeleted(path string) {
-	d.deletedInV4 = append(d.deletedInV4, path)
+	d.DeletedInV4 = append(d.DeletedInV4, path)
 }
 
 func (d *diffs) addRemovedComputed(path string) {
-	d.removedComputedInv4 = append(d.removedComputedInv4, path)
+	d.RemovedComputedInv4 = append(d.RemovedComputedInv4, path)
 }
 
 func (d *diffs) deleteRemovedComputed(path string) {
-	d.removedComputedInv4 = removeFromSlice(d.removedComputedInv4, path)
+	d.RemovedComputedInv4 = removeFromSlice(d.RemovedComputedInv4, path)
 }
 
 func (d *diffs) addRenamed(pathV3, pathV4 string) {
@@ -86,39 +86,24 @@ type differ struct {
 	diffs        map[string]*diffs
 }
 
-func newDiffer(onlyFixResources, fixResourceOfService string) *differ {
+func newDiffer() *differ {
 	d := &differ{
 		SchemaV3:     getSchema(false),
 		SchemaV4:     getSchema(true),
 		diffs:        map[string]*diffs{},
 		fixResources: map[string]bool{},
 	}
-	if len(onlyFixResources) > 0 {
-		for _, rt := range strings.Split(onlyFixResources, ",") {
-			if rt != "" {
-				d.fixResources[rt] = true
-			}
+
+	os.Setenv("ARM_FOURPOINTZERO_BETA", "true")
+	for _, item := range provider.SupportedTypedServices() {
+		for _, r := range item.Resources() {
+			d.fixResources[r.ResourceType()] = true
 		}
 	}
 
-	if fixResourceOfService != "" {
-		os.Setenv("ARM_FOURPOINTZERO_BETA", "true")
-		for _, item := range provider.SupportedTypedServices() {
-			if strings.EqualFold(item.Name(), fixResourceOfService) {
-				for _, r := range item.Resources() {
-					d.fixResources[r.ResourceType()] = true
-				}
-				break
-			}
-		}
-
-		for _, item := range provider.SupportedUntypedServices() {
-			if strings.EqualFold(item.Name(), fixResourceOfService) {
-				for rt := range item.SupportedResources() {
-					d.fixResources[rt] = true
-				}
-				break
-			}
+	for _, item := range provider.SupportedUntypedServices() {
+		for rt := range item.SupportedResources() {
+			d.fixResources[rt] = true
 		}
 	}
 	return d
@@ -133,7 +118,7 @@ func (d *differ) shouldFixResource(rt string) bool {
 
 func (d *differ) patch() {
 	if diff := d.diffs["azurerm_network_interface"]; diff != nil {
-		diff.removedComputedInv4 = removeFromSlice(diff.removedComputedInv4, "dns_servers")
+		diff.RemovedComputedInv4 = removeFromSlice(diff.RemovedComputedInv4, "dns_servers")
 	}
 }
 
@@ -145,7 +130,7 @@ func (d *differ) diff() {
 			continue
 		}
 		if _, ok := d.diffs[rt]; !ok {
-			d.diffs[rt] = &diffs{resourceType: rt}
+			d.diffs[rt] = &diffs{ResourceType: rt}
 		}
 		d.diffResource(rt, r3, r4, "")
 	}
@@ -213,19 +198,19 @@ func (d *differ) diffResource(rt string, v3, v4 providerjson.ResourceJSON, paren
 }
 func (d *differ) printDiffs() {
 	for rt, diffs := range d.diffs {
-		if len(diffs.deletedInV4)+len(diffs.removedComputedInv4)+len(diffs.RenamedInV4) == 0 {
+		if len(diffs.DeletedInV4)+len(diffs.RemovedComputedInv4)+len(diffs.RenamedInV4) == 0 {
 			continue
 		}
 
 		log.Printf("===== %s =====\n", rt)
-		if len(diffs.deletedInV4) > 0 {
-			log.Printf("deleted In V4: %v\n", diffs.deletedInV4)
+		if len(diffs.DeletedInV4) > 0 {
+			log.Printf("deleted In V4: %v\n", diffs.DeletedInV4)
 		}
 		if len(diffs.RenamedInV4) > 0 {
 			log.Printf("renamed In V4: %v\n", diffs.RenamedInV4)
 		}
-		if len(diffs.removedComputedInv4) > 0 {
-			log.Printf("removed computed In V4: %v\n", diffs.removedComputedInv4)
+		if len(diffs.RemovedComputedInv4) > 0 {
+			log.Printf("removed computed In V4: %v\n", diffs.RemovedComputedInv4)
 		}
 	}
 }
@@ -237,13 +222,16 @@ var (
 )
 
 func main() {
-	flag.Parse()
-	d := newDiffer(*onlyFixResourcesArgs, *fixResourcesOfService)
+	d := newDiffer()
 	d.diff()
-	// d.printDiffs()
-	folder := path.Join(internalDir, "services")
-	if *serviceFolder != "" {
-		folder = path.Join(folder, *serviceFolder)
+	for k, diff := range d.diffs {
+		if len(diff.RemovedComputedInv4) == 0 && len(diff.DeletedInV4) == 0 && len(diff.RenamedInV4) == 0 {
+			delete(d.diffs, k)
+		}
 	}
-	d.fixAllTestsByDir(folder)
+	b, err := json.Marshal(d.diffs)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Println(string(b))
 }

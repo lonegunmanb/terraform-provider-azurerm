@@ -14,10 +14,10 @@ func (d *diffs) fixBlock(block *codeBlock) {
 		block.fixedLines = make([]string, len(block.lines))
 		copy(block.fixedLines, block.lines)
 	}
-	deleteProps(d.resourceType, d.deletedInV4, block)
-	fixRenamed(d.resourceType, d.RenamedInV4, block)
-	fixRemovedComputed(d.removedComputedInv4, block)
-	specialPatch(d.resourceType, block)
+	deleteProps(d.ResourceType, d.DeletedInV4, block)
+	fixRenamed(d.ResourceType, d.RenamedInV4, block)
+	fixRemovedComputed(d.RemovedComputedInv4, block)
+	specialPatch(d.ResourceType, block)
 }
 
 // add some special patch logic to specific resources
@@ -247,7 +247,7 @@ func (d *differ) fixSourceCode(source *SourceCodeFile) {
 			}
 		}
 
-		log.Printf("try to fix block of resource %s", diff.resourceType)
+		log.Printf("try to fix block of resource %s", diff.ResourceType)
 		diff = diff.patchByContext(source.contextOf(idx))
 		diff.fixBlock(b)
 	}
@@ -268,7 +268,7 @@ var patchComputedFieldOfResource = []computedOfResource{
 
 func (d *diffs) patchByContext(ctx []*codeBlock) *diffs {
 	for _, item := range patchComputedFieldOfResource {
-		if item.parentResource == d.resourceType {
+		if item.parentResource == d.ResourceType {
 			dd := d.clone()
 			// if there is no access policy resource, then we don't need add such ignore_changes to access_policy prop
 			if !contextHasResource(ctx, item.eleResource) {
@@ -278,7 +278,7 @@ func (d *diffs) patchByContext(ctx []*codeBlock) *diffs {
 		}
 	}
 
-	switch d.resourceType {
+	switch d.ResourceType {
 	case "azurerm_vpn_gateway_nat_rule":
 		item := d.clone()
 		item.deleteRemovedComputed("external_mapping")

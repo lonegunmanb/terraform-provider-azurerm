@@ -10,8 +10,8 @@ func TestRemovedComputed(t *testing.T) {
 	df := &differ{
 		diffs: map[string]*diffs{
 			"azurerm_virtual_network": {
-				resourceType:        "azurerm_virtual_network",
-				removedComputedInv4: []string{"subnet"},
+				ResourceType:        "azurerm_virtual_network",
+				RemovedComputedInv4: []string{"subnet"},
 			},
 		},
 	}
