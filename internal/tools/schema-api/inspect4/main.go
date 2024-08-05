@@ -40,7 +40,7 @@ type diffs struct {
 	ResourceType        string      `json:"resource_type"`
 	DeletedInV4         diffPaths   `json:"deleted"`
 	RemovedComputedInv4 diffPaths   `json:"oc_removed"`
-	RenamedInV4         [][2]string `json:"reanmed"`
+	RenamedInV4         [][2]string `json:"renamed"`
 }
 
 func (d *diffs) clone() *diffs {
