@@ -545,8 +545,14 @@ func resourceVirtualNetworkUpdate(d *pluginsdk.ResourceData, meta interface{}) e
 				for _, existingAllocation := range *payload.Properties.AddressSpace.IPamPoolPrefixAllocations {
 					for _, expandedAllocation := range *expandedIPAddressPool {
 						if existingAllocation.Pool != nil && expandedAllocation.Pool != nil && strings.EqualFold(pointer.From(existingAllocation.Pool.Id), pointer.From(expandedAllocation.Pool.Id)) &&
-							existingAllocation.NumberOfIPAddresses != nil && expandedAllocation.NumberOfIPAddresses != nil && *existingAllocation.NumberOfIPAddresses > *expandedAllocation.NumberOfIPAddresses {
-							return fmt.Errorf("`number_of_ip_addresses` cannot be decreased from %v to %v on pool: %v", *existingAllocation.NumberOfIPAddresses, *expandedAllocation.NumberOfIPAddresses, *expandedAllocation.Pool.Id)
+							existingAllocation.NumberOfIPAddresses != nil && expandedAllocation.NumberOfIPAddresses != nil {
+							cmp, err := compareNumberOfIPAddresses(*existingAllocation.NumberOfIPAddresses, *expandedAllocation.NumberOfIPAddresses)
+							if err != nil {
+								return fmt.Errorf("comparing `number_of_ip_addresses`: %+v", err)
+							}
+							if cmp > 0 {
+								return fmt.Errorf("`number_of_ip_addresses` cannot be decreased from %v to %v on pool: %v", *existingAllocation.NumberOfIPAddresses, *expandedAllocation.NumberOfIPAddresses, *expandedAllocation.Pool.Id)
+							}
 						}
 					}
 				}

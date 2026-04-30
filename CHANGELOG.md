@@ -1,3 +1,10 @@
+## 4.xx.0 (Unreleased)
+
+BUG FIXES:
+
+* `azurerm_subnet` - fix `number_of_ip_addresses` in `ip_address_pool` using string comparison instead of numeric comparison, which incorrectly blocked valid increases ([#32258](https://github.com/hashicorp/terraform-provider-azurerm/issues/32258))
+* `azurerm_virtual_network` - fix `number_of_ip_addresses` in `ip_address_pool` using string comparison instead of numeric comparison, which incorrectly blocked valid increases ([#32258](https://github.com/hashicorp/terraform-provider-azurerm/issues/32258))
+
 ## 4.70.0 (April 23, 2026)
 
 FEATURES:
