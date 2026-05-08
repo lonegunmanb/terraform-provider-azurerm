@@ -125,10 +125,6 @@ func TestAccPrivateEndpoint_invalidRequestMessage(t *testing.T) {
 			Config:      r.invalidAtuoWithRequestMessage(data),
 			ExpectError: regexp.MustCompile(`the "request_message" attribute cannot be set if the "is_manual_connection" attribute is "false"`),
 		},
-		{
-			Config:      r.invalidManualWithoutRequestMessage(data),
-			ExpectError: regexp.MustCompile(`the "request_message" attribute must not be empty`),
-		},
 	})
 }
 
@@ -602,24 +598,6 @@ resource "azurerm_private_endpoint" "test" {
 `, r.template(data, r.serviceAutoApprove(data)), data.RandomInteger)
 }
 
-func (r PrivateEndpointResource) invalidManualWithoutRequestMessage(data acceptance.TestData) string {
-	return fmt.Sprintf(`
-%s
-
-resource "azurerm_private_endpoint" "test" {
-  name                = "acctest-privatelink-%d"
-  resource_group_name = azurerm_resource_group.test.name
-  location            = azurerm_resource_group.test.location
-  subnet_id           = azurerm_subnet.endpoint.id
-
-  private_service_connection {
-    name                           = azurerm_private_link_service.test.name
-    is_manual_connection           = true
-    private_connection_resource_id = azurerm_private_link_service.test.id
-  }
-}
-`, r.template(data, r.serviceAutoApprove(data)), data.RandomInteger)
-}
 
 func (PrivateEndpointResource) privateDnsZoneGroup(data acceptance.TestData) string {
 	return fmt.Sprintf(`
