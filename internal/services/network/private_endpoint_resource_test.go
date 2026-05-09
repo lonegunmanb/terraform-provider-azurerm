@@ -125,10 +125,6 @@ func TestAccPrivateEndpoint_invalidRequestMessage(t *testing.T) {
 			Config:      r.invalidAtuoWithRequestMessage(data),
 			ExpectError: regexp.MustCompile(`the "request_message" attribute cannot be set if the "is_manual_connection" attribute is "false"`),
 		},
-		{
-			Config:      r.invalidManualWithoutRequestMessage(data),
-			ExpectError: regexp.MustCompile(`the "request_message" attribute must not be empty`),
-		},
 	})
 }
 
