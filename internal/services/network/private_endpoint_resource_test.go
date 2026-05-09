@@ -598,7 +598,6 @@ resource "azurerm_private_endpoint" "test" {
 `, r.template(data, r.serviceAutoApprove(data)), data.RandomInteger)
 }
 
-
 func (PrivateEndpointResource) privateDnsZoneGroup(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 provider "azurerm" {
