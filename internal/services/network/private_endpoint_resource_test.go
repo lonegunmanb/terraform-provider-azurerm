@@ -125,10 +125,21 @@ func TestAccPrivateEndpoint_invalidRequestMessage(t *testing.T) {
 			Config:      r.invalidAtuoWithRequestMessage(data),
 			ExpectError: regexp.MustCompile(`the "request_message" attribute cannot be set if the "is_manual_connection" attribute is "false"`),
 		},
+	})
+}
+
+func TestAccPrivateEndpoint_manualWithoutRequestMessage(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_private_endpoint", "test")
+	r := PrivateEndpointResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
 		{
-			Config:      r.invalidManualWithoutRequestMessage(data),
-			ExpectError: regexp.MustCompile(`the "request_message" attribute must not be empty`),
+			Config: r.invalidManualWithoutRequestMessage(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
 		},
+		data.ImportStep(),
 	})
 }
 
