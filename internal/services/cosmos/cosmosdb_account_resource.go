@@ -1151,20 +1151,39 @@ func resourceCosmosDbAccountUpdate(d *pluginsdk.ResourceData, meta interface{}) 
 		}
 	}
 
-	// Only do this update if a value has changed above...
-	if updateRequired {
+	disablingMultipleWriteLocations := d.HasChange("multiple_write_locations_enabled") && !d.Get("multiple_write_locations_enabled").(bool)
+	enablingMultipleWriteLocations := d.HasChange("multiple_write_locations_enabled") && d.Get("multiple_write_locations_enabled").(bool)
+
+	// Azure rejects Strong consistency when EnableMultipleWriteLocations is true.
+	// When disabling multi-write, we must disable it before updating other properties
+	// to avoid sending an illegal intermediate state (Strong + multi-write=true).
+	// When enabling multi-write, we must update other properties first to ensure
+	// the consistency level is no longer Strong before enabling multi-write.
+	if disablingMultipleWriteLocations {
+		account.Properties.EnableMultipleWriteLocations = pointer.To(false)
+		account.Properties.ConsistencyPolicy = props.ConsistencyPolicy
 		if err = resourceCosmosDbAccountApiCreateOrUpdate(client, ctx, *id, account); err != nil {
-			return fmt.Errorf("updating %s: %+v", id, err)
+			return fmt.Errorf("updating %s `multiple_write_locations_enabled`: %+v", id, err)
 		}
-	}
 
-	// Update the following properties independently after the initial CreateOrUpdate...
-	if d.HasChange("multiple_write_locations_enabled") {
-		account.Properties.EnableMultipleWriteLocations = pointer.To(d.Get("multiple_write_locations_enabled").(bool))
+		if updateRequired {
+			account.Properties.ConsistencyPolicy = expandAzureRmCosmosDBAccountConsistencyPolicy(d)
+			if err = resourceCosmosDbAccountApiCreateOrUpdate(client, ctx, *id, account); err != nil {
+				return fmt.Errorf("updating %s: %+v", id, err)
+			}
+		}
+	} else {
+		if updateRequired {
+			if err = resourceCosmosDbAccountApiCreateOrUpdate(client, ctx, *id, account); err != nil {
+				return fmt.Errorf("updating %s: %+v", id, err)
+			}
+		}
 
-		// Update the database...
-		if err = resourceCosmosDbAccountApiCreateOrUpdate(client, ctx, *id, account); err != nil {
-			return fmt.Errorf("updating %q EnableMultipleWriteLocations: %+v", id, err)
+		if enablingMultipleWriteLocations {
+			account.Properties.EnableMultipleWriteLocations = pointer.To(true)
+			if err = resourceCosmosDbAccountApiCreateOrUpdate(client, ctx, *id, account); err != nil {
+				return fmt.Errorf("updating %s `multiple_write_locations_enabled`: %+v", id, err)
+			}
 		}
 	}
 
