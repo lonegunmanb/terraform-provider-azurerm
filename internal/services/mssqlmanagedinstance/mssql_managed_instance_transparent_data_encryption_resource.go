@@ -53,8 +53,21 @@ func resourceMsSqlManagedInstanceTransparentDataEncryption() *pluginsdk.Resource
 			},
 
 			"key_vault_key_id": {
-				Type:         pluginsdk.TypeString,
-				Optional:     true,
+				Type:     pluginsdk.TypeString,
+				Optional: true,
+				DiffSuppressFunc: func(_, oldValue, newValue string, d *schema.ResourceData) bool {
+					if d.Get("auto_rotation_enabled").(bool) {
+						oldId, err1 := keyvault.ParseNestedItemID(oldValue, keyvault.VersionTypeVersioned, keyvault.NestedItemTypeKey)
+						newId, err2 := keyvault.ParseNestedItemID(newValue, keyvault.VersionTypeVersioned, keyvault.NestedItemTypeKey)
+						if err1 == nil && err2 == nil {
+							if strings.EqualFold(oldId.KeyVaultBaseURL, newId.KeyVaultBaseURL) &&
+								strings.EqualFold(oldId.Name, newId.Name) {
+								return true
+							}
+						}
+					}
+					return false
+				},
 				ValidateFunc: keyvault.ValidateNestedItemID(keyvault.VersionTypeVersioned, keyvault.NestedItemTypeKey),
 			},
 
@@ -77,6 +90,17 @@ func resourceMsSqlManagedInstanceTransparentDataEncryption() *pluginsdk.Resource
 					raw := d.GetRawConfig().AsValueMap()["managed_hsm_key_id"]
 					if raw.IsKnown() && !raw.IsNull() {
 						return raw.AsString() == oldValue
+					}
+				}
+
+				if d.Get("auto_rotation_enabled").(bool) {
+					oldId, err1 := keyvault.ParseNestedItemID(oldValue, keyvault.VersionTypeVersioned, keyvault.NestedItemTypeKey)
+					newId, err2 := keyvault.ParseNestedItemID(newValue, keyvault.VersionTypeVersioned, keyvault.NestedItemTypeKey)
+					if err1 == nil && err2 == nil {
+						if strings.EqualFold(oldId.KeyVaultBaseURL, newId.KeyVaultBaseURL) &&
+							strings.EqualFold(oldId.Name, newId.Name) {
+							return true
+						}
 					}
 				}
 
